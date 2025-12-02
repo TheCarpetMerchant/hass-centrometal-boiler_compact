@@ -11,6 +11,7 @@ from .generic_sensors_all import (
     get_generic_temperature_settings_sensors,
 )
 from .generic_sensors_peltec import PELTEC_GENERIC_SENSORS
+from .generic_sensors_compact import COMPACT_GENERIC_SENSORS
 from .generic_sensors_cm_pelet_set import CM_PELET_SET_GENERIC_SENSORS
 from .generic_sensors_biotec import BIOTEC_GENERIC_SENSORS
 from .generic_sensors_biotec_plus import BIOTEC_PLUS_GENERIC_SENSORS
@@ -21,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 class WebBoilerGenericSensor(SensorEntity):
     """Representation of a Centrometal Boiler Sensor."""
 
-    def __init__(self, hass: HomeAssistant, device, sensor_data, parameter) -> None:
+    def __init__(self, hass: HomeAssistant, device, sensor_data, parameter, disabled_by_default=False) -> None:
         """Initialize the Centrometarl Boiler Sensor."""
         self.hass = hass
         self.web_boiler_client = hass.data[DOMAIN][device.username][WEB_BOILER_CLIENT]
@@ -39,6 +40,7 @@ class WebBoilerGenericSensor(SensorEntity):
         self._product = device["product"]
         self._name = format_name(hass, device, f"{self._product} {self._description}")
         self._unique_id = f"{self._serial}-{self._parameter_name}"
+        self._entity_registry_enabled_default = disabled_by_default
         #
         self.added_to_hass = False
         self.parameter["used"] = True
@@ -142,8 +144,10 @@ class WebBoilerGenericSensor(SensorEntity):
     def create_conf_entities(hass: HomeAssistant, device) -> list[SensorEntity]:
         entities = []
         generic_sensors = dict()
-        if device["type"] in ["peltec", "compact"]:
+        if device["type"] in ["peltec"]:
             generic_sensors = PELTEC_GENERIC_SENSORS
+        elif device["type"] == "compact":
+            generic_sensors = COMPACT_GENERIC_SENSORS
         elif device["type"] == "cmpelet":
             generic_sensors = CM_PELET_SET_GENERIC_SENSORS
         elif device["type"] == "biotec":
@@ -165,5 +169,6 @@ class WebBoilerGenericSensor(SensorEntity):
                 continue
             _LOGGER.info("Creating unknown entry for %s", param_key)
             sensor_data = [None, "mdi:help", None, "{?} " + param_key, {}]
-            entities.append(WebBoilerGenericSensor(hass, device, sensor_data, param))
+            # Pass true to set it as disabled by default
+            entities.append(WebBoilerGenericSensor(hass, device, sensor_data, param, True))
         return entities
